@@ -29,38 +29,75 @@ class DeviceRokoko(Device):
         self._slate = 'slate'
         self._take = 1
 
-    
+    def set_slate(self, value):
+        self._slate = value
+
+    def set_take(self, value):
+        self._take = value
+
     def record_start(self, slate, take, description):
         """
         Called by switchboard_dialog when recording was started, will start
         recording in Rokoko.
         """
-        if self.is_disconnected or not self.trigger_start:
+        if self.is_disconnected or not self.is_recording_device:
+            LOGGER.warning("Yo disconnected son!")
             return
 
         self.set_slate(slate)
         self.set_take(take)
+        cmd_url = f"http://{self.ip_address}:{self.setting_rokoko_port.get_value()}/v1/1234/recording/start"
 
-        self.start_rokoko_record()
+        res = requests.post(url = cmd_url, json = {'filename': f"slate_{self._slate}_take_{self._take}"})
+
+        LOGGER.warning(res.json().description)
 
     def record_stop(self):
         """
         Called by switchboard_dialog when recording was stopped, will stop
         recording in Rokoko.
         """
-        if self.is_disconnected or not self.trigger_stop:
-            return
+        cmd_url = f"http://{self.ip_address}:{self.setting_rokoko_port.get_value()}/v1/1234/recording/stop"
 
-        self.stop_rokoko_record()
+        res = requests.post(cmd_url)
 
-    def start_rokoko_record(self):
-        LOGGER.warning(f"Started recording...")
-
-    def stop_rokoko_record():
-        LOGGER.warning("Stopped recording")
+        LOGGER.warning(res.json().description)
 
 
 class DeviceWidgetRokoko(DeviceWidget):
     def __init__(self, name, device_hash, ip_address, icons, parent=None):
         super().__init__(name, device_hash, ip_address, icons, parent=parent)
+    
+    def _add_control_buttons(self):
+        super()._add_control_buttons()
 
+        self.connect_button = self.add_control_button(
+            ':/icons/images/icon_connect.png',
+            icon_hover=':/icons/images/icon_connect_hover.png',
+            icon_disabled=':/icons/images/icon_connect_disabled.png',
+            icon_on=':/icons/images/icon_connected.png',
+            icon_hover_on=':/icons/images/icon_connected_hover.png',
+            icon_disabled_on=':/icons/images/icon_connected_disabled.png',
+            tool_tip='Connect/Disconnect from listener')
+
+        self.connect_button.clicked.connect(self.connect_button_clicked)
+
+    def connect_button_clicked(self):
+        if self.connect_button.isChecked():
+            self._connect()
+        else:
+            self._disconnect()
+
+    def _connect(self):
+        # Make sure the button is in the correct state
+        self.connect_button.setChecked(True)
+
+        # Emit Signal to Switchboard
+        self.signal_device_widget_connect.emit(self)
+
+    def _disconnect(self):
+        # Make sure the button is in the correct state
+        self.connect_button.setChecked(False)
+
+        # Emit Signal to Switchboard
+        self.signal_device_widget_disconnect.emit(self)
