@@ -23,8 +23,8 @@ class DeviceRokoko(Device):
     setting_rokoko_port = IntSetting(
         "rokoko_port", "Rokoko Port", 14053)
     
-    def __init__(self, name, ip_address, **kwargs):
-        super().__init__(name, ip_address, **kwargs)
+    def __init__(self, name, address, **kwargs):
+        super().__init__(name, address, **kwargs)
 
         self._slate = 'slate'
         self._take = 1
@@ -41,27 +41,30 @@ class DeviceRokoko(Device):
         recording in Rokoko.
         """
         if self.is_disconnected or not self.is_recording_device:
-            LOGGER.warning("Yo disconnected son!")
+            LOGGER.debug("Rokoko disconnected...")
             return
 
-        self.set_slate(slate)
-        self.set_take(take)
-        cmd_url = f"http://{self.ip_address}:{self.setting_rokoko_port.get_value()}/v1/1234/recording/start"
+        try:
+            self.set_slate(slate)
+            self.set_take(take)
+            cmd_url = f"http://{self.address}:{self.setting_rokoko_port.get_value()}/v1/1234/recording/start"
+    
+            res = requests.post(url = cmd_url, json = {'filename': f"slate_{self._slate}_take_{self._take}"})
 
-        res = requests.post(url = cmd_url, json = {'filename': f"slate_{self._slate}_take_{self._take}"})
-
-        LOGGER.warning(res.json().description)
+            LOGGER.debug(res.json())
+        except Exception as ex:
+            LOGGER.debug(f"{type(ex).__name__} {ex.args}")
 
     def record_stop(self):
         """
         Called by switchboard_dialog when recording was stopped, will stop
         recording in Rokoko.
         """
-        cmd_url = f"http://{self.ip_address}:{self.setting_rokoko_port.get_value()}/v1/1234/recording/stop"
+        cmd_url = f"http://{self.address}:{self.setting_rokoko_port.get_value()}/v1/1234/recording/stop"
 
         res = requests.post(cmd_url)
 
-        LOGGER.warning(res.json().description)
+        LOGGER.debug(res.json())
 
 
 class DeviceWidgetRokoko(DeviceWidget):
